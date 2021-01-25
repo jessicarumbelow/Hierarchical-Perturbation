@@ -18,7 +18,7 @@ from torchray.benchmark.datasets import get_dataset, coco_as_mask, voc_as_mask
 from torchray.benchmark.models import get_model, get_transform
 from torchray.utils import imsc, get_device, xmkdir
 import torchray.attribution.extremal_perturbation as elp
-from perturbation_search import perturbation_search, perturbation_search_alternate
+from hierarchical_perturbation import hierarchical_perturbation, hierarchical_perturbation_alternate
 from torchray.benchmark.datasets import COCO_CLASSES as classes
 import time
 import torch.nn.functional as F
@@ -40,19 +40,19 @@ datasets = ['coco']
 
 archs = ['resnet50']
 
-ps_experiment = 'ps_final'
+hipe_experiment = 'hipe_final'
 
 methods = [
-           'rise',
-           'center',
-           'contrastive_excitation_backprop',
-           'deconvnet',
-           'excitation_backprop',
-           'grad_cam',
-           'gradient',
-           'guided_backprop',
-           'extremal_perturbation'
-           ]
+    'rise',
+    'center',
+    'contrastive_excitation_backprop',
+    'deconvnet',
+    'excitation_backprop',
+    'grad_cam',
+    'gradient',
+    'guided_backprop',
+    'extremal_perturbation'
+    ]
 
 """ 
     ['rise',
@@ -232,8 +232,8 @@ class ExperimentExecutor():
 
                 tic = time.process_time()
 
-                if self.experiment.method == ps_experiment:
-                    saliency, num_ops = perturbation_search(self.model, x, class_id, resize=image_size, perturbation_type='mean')
+                if self.experiment.method == hipe_experiment:
+                    saliency, num_ops = hierarchical_perturbation(self.model, x, class_id, resize=image_size, perturbation_type='mean')
 
                 elif self.experiment.method == "center":
                     w, h = image_size
@@ -248,7 +248,6 @@ class ExperimentExecutor():
                             get_backward_gradient=get_pointing_gradient
                             )
 
-
                 elif self.experiment.method == "deconvnet":
                     saliency = deconvnet(
                             self.model, x, class_id,
@@ -256,7 +255,6 @@ class ExperimentExecutor():
                             smooth=0.02,
                             get_backward_gradient=get_pointing_gradient
                             )
-
 
                 elif self.experiment.method == "guided_backprop":
                     saliency = guided_backprop(
@@ -266,7 +264,6 @@ class ExperimentExecutor():
                             get_backward_gradient=get_pointing_gradient
                             )
 
-
                 elif self.experiment.method == "grad_cam":
                     saliency = grad_cam(
                             self.model, x, class_id,
@@ -275,14 +272,12 @@ class ExperimentExecutor():
                             get_backward_gradient=get_pointing_gradient
                             )
 
-
                 elif self.experiment.method == "excitation_backprop":
                     saliency = excitation_backprop(
                             self.model, x, class_id, self.saliency_layer,
                             resize=image_size,
                             get_backward_gradient=get_pointing_gradient
                             )
-
 
                 elif self.experiment.method == "contrastive_excitation_backprop":
                     saliency = contrastive_excitation_backprop(
@@ -293,7 +288,6 @@ class ExperimentExecutor():
                             get_backward_gradient=get_pointing_gradient
                             )
 
-
                 elif self.experiment.method == "rise":
                     # For RISE, compute saliency map for all classes.
                     num_ops = 0
@@ -301,7 +295,6 @@ class ExperimentExecutor():
                         num_ops = 8000
                         rise_saliency = rise(self.model, x, resize=image_size, seed=self.seed)
                     saliency = rise_saliency[:, class_id, :, :].unsqueeze(1)
-
 
                 elif self.experiment.method == "extremal_perturbation":
 

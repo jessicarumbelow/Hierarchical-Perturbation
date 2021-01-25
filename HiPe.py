@@ -7,13 +7,13 @@ from scipy.ndimage.filters import gaussian_filter
 import time
 import inspect
 
-def perturbation_search_alternate(model,
-                                  original_input,
-                                  c,
-                                  vis=False,
-                                  interp_mode='nearest',
-                                  resize=None,
-                                  perturbation_type='fade'):
+def hierarchical_perturbation_alternate(model,
+                                        original_input,
+                                        c,
+                                        vis=False,
+                                        interp_mode='nearest',
+                                        resize=None,
+                                        perturbation_type='fade'):
     with torch.no_grad():
 
         dev = original_input.device
@@ -102,14 +102,14 @@ class Timer:
         self.last_time = cur_time
 
 
-def perturbation_search(model,
-                        input,
-                        target,
-                        vis=False,
-                        interp_mode='nearest',
-                        resize=None,
-                        batch_size=32,
-                        perturbation_type='fade'):
+def hierarchical_perturbation(model,
+                              input,
+                              target,
+                              vis=False,
+                              interp_mode='nearest',
+                              resize=None,
+                              batch_size=32,
+                              perturbation_type='fade'):
 
     with torch.no_grad():
 

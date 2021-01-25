@@ -25,7 +25,7 @@ from torchray.benchmark.models import get_model, get_transform
 from torchray.benchmark.pointing_game import PointingGameBenchmark
 from torchray.utils import imsc, get_device, xmkdir
 import torchray.attribution.extremal_perturbation as elp
-from perturbation_search import perturbation_search, perturbation_search_alternate
+from hierarchical_perturbation import hierarchical_perturbation, hierarchical_perturbation_alternate
 from torchray.benchmark.datasets import COCO_CLASSES as classes
 import time
 import torch.nn.functional as F
@@ -47,10 +47,10 @@ datasets = ['coco']
 
 archs = ['resnet50']
 
-ps_experiment = 'ps_final_mean'
-shutil.copy2('perturbation_search.py', 'data/attribution_benchmarks/experiment_backups/{}.py'.format(ps_experiment))
+hipe_experiment = 'hipe_final_mean'
+shutil.copy2('hierarchical_perturbation.py', 'data/attribution_benchmarks/experiment_backups/{}.py'.format(hipe_experiment))
 
-methods = [ps_experiment]
+methods = [hipe_experiment]
 
 """ 
     ['rise',
@@ -90,7 +90,7 @@ def _saliency_to_point(saliency):
     return torch.cat((point % w, point // w), dim=1)
 
 
-def _ps_saliency_to_point(saliency):
+def _hipe_saliency_to_point(saliency):
     assert len(saliency.shape) == 4
     max_point = torch.max(saliency)
     points = torch.nonzero((saliency == max_point))
@@ -250,8 +250,8 @@ class ExperimentExecutor():
 
                 tic = time.process_time()
 
-                if self.experiment.method == ps_experiment:
-                    saliency, num_ops = perturbation_search(self.model, x, class_id, resize=image_size, perturbation_type='mean')
+                if self.experiment.method == hipe_experiment:
+                    saliency, num_ops = hierarchical_perturbation(self.model, x, class_id, resize=image_size, perturbation_type='mean')
 
                 elif self.experiment.method == "center":
                     w, h = image_size
@@ -360,8 +360,8 @@ class ExperimentExecutor():
 
                 toc = time.process_time()
 
-                if 'ps_' in self.experiment.name:
-                    point = _ps_saliency_to_point(saliency)
+                if 'hipe_' in self.experiment.name:
+                    point = _hipe_saliency_to_point(saliency)
                 else:
                     point = _saliency_to_point(saliency)
 
@@ -397,8 +397,8 @@ class ExperimentExecutor():
                     plt.subplot(1, 2, 2)
                     imsc(img[0])
                     plt.plot(point[0, 0].cpu(), point[0, 1].cpu(), 'r+')
-                    ps_dir = 'ps/' if ('ps_' in self.experiment.name) else ''
-                    plt.savefig('data/attribution_benchmarks/pngs/' + ps_dir + str(cls) + '_' + self.experiment.name + image_name)
+                    hipe_dir = 'ps/' if ('hipe_' in self.experiment.name) else ''
+                    plt.savefig('data/attribution_benchmarks/pngs/' + hipe_dir + str(cls) + '_' + self.experiment.name + image_name)
                     plt.close()
 
             return results
