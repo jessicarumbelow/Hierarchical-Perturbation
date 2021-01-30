@@ -59,16 +59,13 @@ def causal_metric(model,
                   target,
                   verbose=0,
                   mode='del',
-                  steps=None, save_as=''):
+                  steps=100, save_as=''):
     dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(dev)
 
     with torch.no_grad():
 
         HW = sal.shape[-1] * sal.shape[-2]
-
-        if steps is None:
-            steps = 96
 
         step = HW // steps
         num_steps = (HW + step - 1) // step

@@ -18,7 +18,7 @@ from torchray.benchmark.datasets import get_dataset, coco_as_mask, voc_as_mask
 from torchray.benchmark.models import get_model, get_transform
 from torchray.utils import imsc, get_device, xmkdir
 import torchray.attribution.extremal_perturbation as elp
-from hierarchical_perturbation import hierarchical_perturbation, hierarchical_perturbation_alternate
+from HiPe import hierarchical_perturbation, hierarchical_perturbation_alternate
 from torchray.benchmark.datasets import COCO_CLASSES as classes
 import time
 import torch.nn.functional as F
@@ -31,7 +31,7 @@ chunk = None
 vis = False
 lim = 1000
 
-datasets = ['coco']
+datasets = ['coco', 'voc_2007']
 
 """['voc_2007',
     'coco'
@@ -42,17 +42,17 @@ archs = ['resnet50']
 
 hipe_experiment = 'hipe_final'
 
-methods = [
-    'rise',
-    'center',
-    'contrastive_excitation_backprop',
-    'deconvnet',
-    'excitation_backprop',
-    'grad_cam',
-    'gradient',
-    'guided_backprop',
-    'extremal_perturbation'
-    ]
+methods = [hipe_experiment,
+           'rise',
+           'center',
+           'contrastive_excitation_backprop',
+           'deconvnet',
+           'excitation_backprop',
+           'grad_cam',
+           'gradient',
+           'guided_backprop',
+           'extremal_perturbation'
+           ]
 
 """ 
     ['rise',
@@ -373,7 +373,7 @@ class ExperimentExecutor():
                 self.image_count += 1
 
                 print(self.experiment.name)
-                # print(results)
+                print(results)
 
                 if vis and 'coco' in self.experiment.dataset:
 
@@ -454,14 +454,12 @@ class Experiment():
         self.boom = boom
         self.insertion = float('NaN')
         self.deletion = float('NaN')
-        self.time = 0
         self.num_ops = 0
 
     def __str__(self):
         return (
             f"{self.method},{self.arch},{self.dataset},"
             f"{self.insertion:.5f},{self.deletion:.5f},"
-            f"{self.time:.5f},{self.num_ops:.5f},"
         )
 
     @property
@@ -470,13 +468,13 @@ class Experiment():
 
     @property
     def path(self):
-        return os.path.join(self.root, self.name + 'ins_del' + str(lim) + ".csv")
+        return os.path.join(self.root, self.name + '_cm_' + str(lim) + ".csv")
 
     def save(self):
         print(self.__str__() + "\n")
-        with open(os.path.join(self.root, 'experiments' + str(lim) + '.csv'), 'a+') as f:
+        with open(os.path.join(self.root, 'experiments' + '_cm_'+ str(lim) + '.csv'), 'a+') as f:
             f.write(self.__str__() + "\n")
-        with open(os.path.join(self.root, self.name + str(lim) + ".csv"), 'a+') as f:
+        with open(os.path.join(self.root, self.name + '_cm_' + str(lim) + ".csv"), 'a+') as f:
             f.write(self.__str__() + "\n")
 
     def load(self):
@@ -514,9 +512,5 @@ if __name__ == "__main__":
         if e.done():
             e.load()
             continue
-        ExperimentExecutor(e, debug=1).run()
+        ExperimentExecutor(e, debug=0).run()
 
-"""
-
-.....
-"""

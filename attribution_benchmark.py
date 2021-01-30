@@ -25,7 +25,7 @@ from torchray.benchmark.models import get_model, get_transform
 from torchray.benchmark.pointing_game import PointingGameBenchmark
 from torchray.utils import imsc, get_device, xmkdir
 import torchray.attribution.extremal_perturbation as elp
-from hierarchical_perturbation import hierarchical_perturbation, hierarchical_perturbation_alternate
+from HiPe import hierarchical_perturbation, hierarchical_perturbation_alternate
 from torchray.benchmark.datasets import COCO_CLASSES as classes
 import time
 import torch.nn.functional as F
@@ -36,9 +36,9 @@ series_dir = os.path.join('data', series)
 seed = 0
 chunk = None
 vis = False
-lim = None
+lim = 100
 
-datasets = ['coco']
+datasets = ['voc_2007', 'coco']
 
 """['voc_2007',
     'coco'
@@ -48,9 +48,17 @@ datasets = ['coco']
 archs = ['resnet50']
 
 hipe_experiment = 'hipe_final_mean'
-shutil.copy2('hierarchical_perturbation.py', 'data/attribution_benchmarks/experiment_backups/{}.py'.format(hipe_experiment))
+shutil.copy2('HiPe.py', 'data/attribution_benchmarks/experiment_backups/{}.py'.format(hipe_experiment))
 
-methods = [hipe_experiment]
+methods = [hipe_experiment, 'rise',
+    'center',
+    'contrastive_excitation_backprop',
+    'deconvnet',
+    'excitation_backprop',
+    'grad_cam',
+    'gradient',
+    'guided_backprop',
+    'extremal_perturbation']
 
 """ 
     ['rise',
@@ -265,7 +273,6 @@ class ExperimentExecutor():
                             smooth=0.02,
                             get_backward_gradient=get_pointing_gradient
                             )
-
 
                 elif self.experiment.method == "deconvnet":
                     saliency = deconvnet(
@@ -526,4 +533,7 @@ if __name__ == "__main__":
         if e.done():
             e.load()
             continue
-        ExperimentExecutor(e, debug=1).run()
+        ExperimentExecutor(e, debug=0).run()
+
+
+
