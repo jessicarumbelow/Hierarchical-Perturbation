@@ -36,42 +36,25 @@ series_dir = os.path.join('data', series)
 seed = 0
 chunk = None
 vis = False
-lim = 100
+lim = None
 
-datasets = ['voc_2007', 'coco']
-
-"""['voc_2007',
-    'coco'
-    ]
-"""
+datasets = ['coco']
 
 archs = ['resnet50']
 
-hipe_experiment = 'hipe_final_mean'
-shutil.copy2('HiPe.py', 'data/attribution_benchmarks/experiment_backups/{}.py'.format(hipe_experiment))
+hipe_experiment = 'hipe_final'
 
-methods = [hipe_experiment, 'rise',
-    'center',
-    'contrastive_excitation_backprop',
-    'deconvnet',
-    'excitation_backprop',
-    'grad_cam',
-    'gradient',
-    'guided_backprop',
-    'extremal_perturbation']
-
-""" 
-    ['rise',
-    'center',
-    'contrastive_excitation_backprop',
-    'deconvnet',
-    'excitation_backprop',
-    'grad_cam',
-    'gradient',
-    'guided_backprop',
-    'extremal_perturbation'
-    ]
-"""
+methods = [hipe_experiment,
+           'rise',
+           'center',
+           'contrastive_excitation_backprop',
+           'deconvnet',
+           'excitation_backprop',
+           'grad_cam',
+           'gradient',
+           'guided_backprop',
+           'extremal_perturbation'
+           ]
 
 
 class ProcessingError(Exception):
@@ -120,7 +103,7 @@ class ExperimentExecutor():
         self.pointing_difficult = None
         self.time = 0
         self.num_ops = 0
-        self.image_count = 0
+        self.image_count = 1
         self.debug = debug
         self.seed = seed
 
@@ -154,7 +137,7 @@ class ExperimentExecutor():
                                 subset=subset,
                                 transform=transform,
                                 download=False,
-                                limiter=lim)
+                                limiter=None if lim == 'All' else lim)
 
         # Get subset of data. This is used for debugging and for
         # splitting computation on a cluster.
@@ -168,6 +151,7 @@ class ExperimentExecutor():
                 for i, name in enumerate(self.data.images):
                     if dataset_filter['image_name'] in name:
                         chunk.append(i)
+                        print('Found image {}'.format(name))
 
             print(f"Filter selected {len(chunk)} image(s).")
 
@@ -323,7 +307,7 @@ class ExperimentExecutor():
                     # For RISE, compute saliency map for all classes.
                     num_ops = 0
                     if rise_saliency is None:
-                        num_ops = 8000
+                        num_ops = 16000
                         rise_saliency = rise(self.model, x, resize=image_size, seed=self.seed)
                     saliency = rise_saliency[:, class_id, :, :].unsqueeze(1)
 
@@ -388,10 +372,8 @@ class ExperimentExecutor():
                 print(self.experiment.name, self.data.as_image_name(y[0]))
                 print(results)
 
-                if vis and 'coco' in self.experiment.dataset:
-                    mask = coco_as_mask(self.data, y[0], class_id).to(self.device)
-                    mask = abs(mask.float().unsqueeze(0).unsqueeze(0) - 1)
-                    mask = F.interpolate(mask, saliency.shape[2:], mode='nearest')
+                if vis and ('coco' in self.experiment.dataset):
+
                     img = F.interpolate(x, saliency.shape[2:], mode='nearest')
 
                     image_name = self.data.as_image_name(y[0])
@@ -405,6 +387,7 @@ class ExperimentExecutor():
                     imsc(img[0])
                     plt.plot(point[0, 0].cpu(), point[0, 1].cpu(), 'r+')
                     hipe_dir = 'ps/' if ('hipe_' in self.experiment.name) else ''
+                    print('Saving image...')
                     plt.savefig('data/attribution_benchmarks/pngs/' + hipe_dir + str(cls) + '_' + self.experiment.name + image_name)
                     plt.close()
 
@@ -460,6 +443,7 @@ class Experiment():
                  series,
                  method,
                  arch,
+
                  dataset,
                  root='',
                  chunk=None,
@@ -534,6 +518,3 @@ if __name__ == "__main__":
             e.load()
             continue
         ExperimentExecutor(e, debug=0).run()
-
-
-

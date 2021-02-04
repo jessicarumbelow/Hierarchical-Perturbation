@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from scipy.ndimage.filters import gaussian_filter
 import time
 import inspect
+from IPython.display import clear_output
 
 def hierarchical_perturbation_alternate(model,
                                         original_input,
@@ -13,7 +14,7 @@ def hierarchical_perturbation_alternate(model,
                                         vis=False,
                                         interp_mode='nearest',
                                         resize=None,
-                                        perturbation_type='fade'):
+                                        perturbation_type='mean'):
     with torch.no_grad():
 
         dev = original_input.device
@@ -109,12 +110,15 @@ def hierarchical_perturbation(model,
                               interp_mode='nearest',
                               resize=None,
                               batch_size=32,
-                              perturbation_type='fade'):
+                              perturbation_type='mean'):
+
 
     with torch.no_grad():
 
         # Get device of input (i.e., GPU).
         dev = input.device
+        if dev == 'cpu':
+            batch_size=1
         bn, channels, input_y_dim, input_x_dim = input.shape
         dim = min(input_x_dim, input_y_dim)
         total_masks = 0
@@ -137,7 +141,7 @@ def hierarchical_perturbation(model,
             depth += 1
             threshold = torch.min(saliency) + ((torch.max(saliency) - torch.min(saliency)) / 2)
 
-            #print('Depth: {}, {} x {} Cell'.format(depth, input_y_dim//num_cells, input_x_dim//num_cells))
+            # print('Depth: {}, {} x {} Cell'.format(depth, input_y_dim//num_cells, input_x_dim//num_cells))
             # print('Threshold: {:.1f}'.format(threshold))
             # print('Range {:.1f} to {:.1f}'.format(saliency.min(), saliency.max()))
 
@@ -183,7 +187,7 @@ def hierarchical_perturbation(model,
                             b_list.append(b_image)
 
             num_masks = len(masks_list)
-            #print('Selected {}/{} masks at depth {}'.format(num_masks, pos_masks, depth))
+            print('Selected {}/{} masks at depth {}'.format(num_masks, pos_masks, depth))
 
             if num_masks == 0:
                 depth -= 1
@@ -191,7 +195,6 @@ def hierarchical_perturbation(model,
             total_masks += num_masks
 
             while len(masks_list) > 0:
-                # print('Processing {} masks'.format(len(masks_list)))
                 m_ix = min(len(masks_list), max_batch)
                 if perturbation_type != 'fade':
                     b_imgs = torch.cat(b_list[:m_ix])
@@ -211,19 +214,22 @@ def hierarchical_perturbation(model,
                 saliency += torch.sum(sal, dim=(0, 1))
 
                 if vis:
+                    clear_output(wait=True)
                     print('Saving image...')
                     plt.figure(figsize=(8, 4))
                     plt.subplot(1, 2, 1)
                     plt.title('Depth: {}, {} x {} Mask\nThreshold: {:.1f}'.format(depth, num_cells, num_cells, threshold))
-                    # imsc((input * masks)[0])
-                    imsc(b_imgs[0])
+                    if perturbation_type == 'fade':
+                        imsc((input * masks)[0])
+                    else:
+                        imsc(b_imgs[0])
                     plt.subplot(1, 2, 2)
                     imsc(saliency[0])
                     plt.show()
-                    plt.savefig('data/attribution_benchmarks/Preview')
+                    plt.savefig('data/attribution_benchmarks/preview')
                     plt.close()
 
-        # print('Used {} masks in total.'.format(total_masks))
+        print('Used {} masks in total.'.format(total_masks))
         if resize is not None:
             saliency = F.interpolate(saliency, (resize[1], resize[0]), mode=interp_mode)
         return saliency, total_masks

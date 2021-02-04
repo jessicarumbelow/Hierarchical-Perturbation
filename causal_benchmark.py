@@ -29,14 +29,10 @@ series_dir = os.path.join('data', series)
 seed = 0
 chunk = None
 vis = False
-lim = 1000
+lim = None
 
-datasets = ['coco', 'voc_2007']
+datasets = ['coco']
 
-"""['voc_2007',
-    'coco'
-    ]
-"""
 
 archs = ['resnet50']
 
@@ -53,19 +49,6 @@ methods = [hipe_experiment,
            'guided_backprop',
            'extremal_perturbation'
            ]
-
-""" 
-    ['rise',
-    'center',
-    'contrastive_excitation_backprop',
-    'deconvnet',
-    'excitation_backprop',
-    'grad_cam',
-    'gradient',
-    'guided_backprop',
-    'extremal_perturbation'
-    ]
-"""
 
 
 class ProcessingError(Exception):
@@ -351,7 +334,7 @@ class ExperimentExecutor():
                                                  saliency[0][0],
                                                  x,
                                                  class_id,
-                                                 verbose=0,
+                                                 verbose=2,
                                                  mode='ins', save_as=self.experiment.name)
 
                 ins_auc = auc(insertion_metric)
@@ -360,7 +343,7 @@ class ExperimentExecutor():
                                                 saliency[0][0],
                                                 x,
                                                 class_id,
-                                                verbose=0,
+                                                verbose=2,
                                                 mode='del', save_as=self.experiment.name)
 
                 del_auc = auc(deletion_metric)
@@ -480,7 +463,7 @@ class Experiment():
     def load(self):
         with open(self.path, "r") as f:
             data = f.read()
-        method, arch, dataset, insertion, deletion, time, num_ops, _ = data.split(",")
+        method, arch, dataset, insertion, deletion, _ = data.split(",")
         assert self.method == method
         assert self.arch == arch
         assert self.dataset == dataset
