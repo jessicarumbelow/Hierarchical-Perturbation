@@ -28,7 +28,7 @@ def hierarchical_perturbation(model,
         dim = min(input_x_dim, input_y_dim)
         total_masks = 0
         depth = 0
-        num_cells = 1
+        num_cells = 4
         max_depth = int(np.log2(dim / num_cells)) - 2
         saliency = torch.zeros((1, 1, input_y_dim, input_x_dim), device=dev)
         max_batch = batch_size

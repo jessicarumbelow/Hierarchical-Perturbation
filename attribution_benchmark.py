@@ -25,7 +25,7 @@ from torchray.benchmark.models import get_model, get_transform
 from torchray.benchmark.pointing_game import PointingGameBenchmark
 from torchray.utils import imsc, get_device, xmkdir
 import torchray.attribution.extremal_perturbation as elp
-from HiPe import hierarchical_perturbation, hierarchical_perturbation_alternate
+from HiPe import hierarchical_perturbation
 from torchray.benchmark.datasets import COCO_CLASSES as classes
 import time
 import torch.nn.functional as F
