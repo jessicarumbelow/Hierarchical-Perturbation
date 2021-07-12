@@ -36,15 +36,16 @@ series_dir = os.path.join('data', series)
 seed = 0
 chunk = None
 vis = False
-lim = None
+lim = 10
 
 datasets = ['coco']
 
 archs = ['resnet50']
 
-hipe_experiment = 'hipe_final'
+hipe_experiment = 'hipe_mean'
 
-methods = [hipe_experiment,
+methods = [hipe_experiment]
+"""
            'rise',
            'center',
            'contrastive_excitation_backprop',
@@ -55,6 +56,7 @@ methods = [hipe_experiment,
            'guided_backprop',
            'extremal_perturbation'
            ]
+"""
 
 
 class ProcessingError(Exception):

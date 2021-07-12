@@ -29,7 +29,7 @@ def hierarchical_perturbation(model,
         total_masks = 0
         depth = 0
         num_cells = 4
-        max_depth = int(np.log2(dim / num_cells)) - 2
+        max_depth = int(np.log2(dim / num_cells)) - 1
         saliency = torch.zeros((1, 1, input_y_dim, input_x_dim), device=dev)
         max_batch = batch_size
 
@@ -44,7 +44,7 @@ def hierarchical_perturbation(model,
             b_list = []
             num_cells *= 2
             depth += 1
-            threshold = torch.min(saliency) + ((torch.max(saliency) - torch.min(saliency)) / 2)
+            threshold = (torch.max(saliency) + torch.min(saliency)) / 2
 
             # print('Depth: {}, {} x {} Cell'.format(depth, input_y_dim//num_cells, input_x_dim//num_cells))
             # print('Threshold: {:.1f}'.format(threshold))
