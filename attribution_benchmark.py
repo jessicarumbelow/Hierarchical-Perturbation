@@ -42,10 +42,9 @@ datasets = ['coco']
 
 archs = ['resnet50']
 
-hipe_experiment = 'hipe_mean'
+hipe_experiment = 'hipe_b1'
 
-methods = [hipe_experiment]
-"""
+methods = [hipe_experiment,
            'rise',
            'center',
            'contrastive_excitation_backprop',
@@ -56,7 +55,6 @@ methods = [hipe_experiment]
            'guided_backprop',
            'extremal_perturbation'
            ]
-"""
 
 
 class ProcessingError(Exception):
@@ -181,7 +179,7 @@ class ExperimentExecutor():
         if self.device is not None:
             return
 
-        self.device = get_device()
+        self.device = 'cpu'#get_device()
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
@@ -245,7 +243,7 @@ class ExperimentExecutor():
                 tic = time.process_time()
 
                 if self.experiment.method == hipe_experiment:
-                    saliency, num_ops = hierarchical_perturbation(self.model, x, class_id, resize=image_size, perturbation_type='mean')
+                    saliency, num_ops = hierarchical_perturbation(self.model, x, class_id, resize=image_size, perturbation_type='mean', batch_size=1)
 
                 elif self.experiment.method == "center":
                     w, h = image_size
