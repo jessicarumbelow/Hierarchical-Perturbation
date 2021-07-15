@@ -42,7 +42,7 @@ datasets = ['coco']
 
 archs = ['resnet50']
 
-hipe_experiment = 'hipe_final'
+hipe_experiment = 'hipe_exps'
 
 methods = [hipe_experiment,
            'rise',
