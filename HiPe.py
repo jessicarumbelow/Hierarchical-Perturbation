@@ -43,17 +43,15 @@ def hierarchical_perturbation(model,
     print('\nBelieve the HiPe!')
     with torch.no_grad():
 
-        # Get device of input (i.e., GPU).
         dev = input.device
         bn, channels, input_y_dim, input_x_dim = input.shape
-        dim = max(input_x_dim, input_y_dim)
         total_masks = 0
         depth = 0
         base = 4
         num_y_cells = int(max(np.floor(np.log(input_y_dim) / np.log(base)), 1))
         num_x_cells = int(max(np.floor(np.log(input_x_dim) / np.log(base)), 1))
         print('Num y cells: {}, num x cells: {}'.format(num_y_cells, num_x_cells))
-        max_depth = int(np.log2(dim / max(num_x_cells, num_y_cells))) - 1
+        max_depth = int(np.log2(max(input_x_dim, input_y_dim) / max(num_x_cells, num_y_cells))) - 1
         print('Max depth: {}'.format(max_depth))
         saliency = torch.zeros((1, 1, input_y_dim, input_x_dim), device=dev)
         max_batch = batch_size
