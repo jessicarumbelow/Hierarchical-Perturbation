@@ -65,7 +65,7 @@ def hierarchical_perturbation(model,
         if perturbation_type == 'blur':
             pre_b_image = blur(input.clone().cpu()).to(dev)
 
-        while depth < max_depth:
+        while (num_cells*2) <= (dim/4):
 
             masks_list = []
             b_list = []
