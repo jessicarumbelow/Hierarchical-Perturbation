@@ -42,7 +42,7 @@ datasets = ['coco']
 
 archs = ['resnet50']
 
-hipe_experiment = 'hipe_b1'
+hipe_experiment = 'hipe_final'
 
 methods = [hipe_experiment,
            'rise',
@@ -179,7 +179,7 @@ class ExperimentExecutor():
         if self.device is not None:
             return
 
-        self.device = 'cpu'#get_device()
+        self.device = get_device()
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
@@ -243,7 +243,7 @@ class ExperimentExecutor():
                 tic = time.process_time()
 
                 if self.experiment.method == hipe_experiment:
-                    saliency, num_ops = hierarchical_perturbation(self.model, x, class_id, resize=image_size, perturbation_type='mean', batch_size=1)
+                    saliency, num_ops = hierarchical_perturbation(self.model, x, class_id, resize=image_size, perturbation_type='mean')
 
                 elif self.experiment.method == "center":
                     w, h = image_size

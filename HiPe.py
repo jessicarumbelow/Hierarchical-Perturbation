@@ -6,14 +6,6 @@ import torch.nn.functional as F
 from scipy.ndimage.filters import gaussian_filter
 import pandas as pd
 
-import torch
-import numpy as np
-from torchray.utils import imsc
-from matplotlib import pyplot as plt
-import torch.nn.functional as F
-from scipy.ndimage.filters import gaussian_filter
-import pandas as pd
-
 
 def gkern(klen, nsig):
     """Returns a Gaussian kernel array.
@@ -46,19 +38,21 @@ def hierarchical_perturbation(model,
                               vis=False,
                               interp_mode='nearest',
                               resize=None,
-                              batch_size=1,
+                              batch_size=32,
                               perturbation_type='mean', threshold_mode='mid-range', return_info=False):
     print('\nBelieve the HiPe!')
     with torch.no_grad():
 
         dev = input.device
+        if dev == 'cpu':
+            batch_size=1
         bn, channels, input_y_dim, input_x_dim = input.shape
+        dim = min(input_x_dim, input_y_dim)
         total_masks = 0
         depth = 0
-        num_y_cells = int(max(np.floor(np.log2(input_y_dim)), 1))
-        num_x_cells = int(max(np.floor(np.log2(input_x_dim)), 1))
-        print('Num y cells: {}, num x cells: {}'.format(num_y_cells, num_x_cells))
-        max_depth = int(np.log2(max(input_x_dim, input_y_dim) / max(num_x_cells, num_y_cells))) - 1
+        num_cells = int(max(np.ceil(np.log2(dim)), 1)/2)
+        print('Num cells: {}'.format(num_cells))
+        max_depth = int(np.log2(dim / num_cells)) - 2
         print('Max depth: {}'.format(max_depth))
         saliency = torch.zeros((1, 1, input_y_dim, input_x_dim), device=dev)
         max_batch = batch_size
@@ -73,11 +67,9 @@ def hierarchical_perturbation(model,
 
         while depth < max_depth:
 
-            masks_set = set()
-            b_set = set()
-            if depth > 0:
-                num_x_cells *= 2
-                num_y_cells *= 2
+            masks_list = []
+            b_list = []
+            num_cells *= 2
             depth += 1
             if threshold_mode == 'mean':
                 threshold = torch.mean(saliency)
@@ -86,21 +78,21 @@ def hierarchical_perturbation(model,
 
             thresholds_d_list.append(threshold.item())
 
-            print('Depth: {}, {} x {} Cell'.format(depth, input_y_dim//num_y_cells, input_x_dim//num_x_cells))
+            y_ixs = range(-1, num_cells)
+            x_ixs = range(-1, num_cells)
+            x_cell_dim = input_x_dim // num_cells
+            y_cell_dim = input_y_dim // num_cells
+
+            print('Depth: {}, {} x {} Cell Dim'.format(depth, y_cell_dim, x_cell_dim))
             print('Threshold: {}'.format(threshold))
             print('Range {:.1f} to {:.1f}'.format(saliency.min(), saliency.max()))
-
-            y_ixs = range(-1, num_y_cells)
-            x_ixs = range(-1, num_x_cells)
-            x_cell_dim = input_x_dim // num_x_cells
-            y_cell_dim = input_y_dim // num_y_cells
 
             for x in x_ixs:
                 for y in y_ixs:
                     x1, y1 = max(0, x), max(0, y)
-                    x2, y2 = min(x + 2, num_x_cells), min(y + 2, num_y_cells)
+                    x2, y2 = min(x + 2, num_cells), min(y + 2, num_cells)
 
-                    mask = torch.zeros((1, 1, num_y_cells, num_x_cells), device=dev)
+                    mask = torch.zeros((1, 1, num_cells, num_cells), device=dev)
                     mask[:, :, y1:y2, x1:x2] = 1.0
                     local_saliency = F.interpolate(mask, (input_y_dim, input_x_dim), mode=interp_mode) * saliency
 
@@ -112,7 +104,7 @@ def hierarchical_perturbation(model,
                     # If salience of region is greater than the average, generate higher resolution mask
                     if local_saliency >= threshold:
 
-                        masks_set.add(abs(mask - 1))
+                        masks_list.append(abs(mask - 1))
 
                         if perturbation_type == 'blur':
 
@@ -126,10 +118,8 @@ def hierarchical_perturbation(model,
                                               axis=(-1, -2), keepdims=True)
 
                             b_image[:, :, y1 * y_cell_dim:y2 * y_cell_dim, x1 * x_cell_dim:x2 * x_cell_dim] = mean
-                            b_set.add(b_image)
+                            b_list.append(b_image)
 
-            masks_list = list(masks_set)
-            b_imgs = list(b_set)
             num_masks = len(masks_list)
             print('Selected {} masks at depth {}'.format(num_masks, depth))
             print('Masks: {}'.format(num_masks))
