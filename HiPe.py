@@ -8,13 +8,8 @@ import pandas as pd
 
 
 def gkern(klen, nsig):
-    """Returns a Gaussian kernel array.
-    Convolution with it results in image blurring."""
-    # create nxn zeros
     inp = np.zeros((klen, klen))
-    # set element at the middle to one, a dirac delta
     inp[klen // 2, klen // 2] = 1
-    # gaussian-smooth the dirac, resulting in a gaussian filter mask
     k = gaussian_filter(inp, nsig)
     kern = np.zeros((3, 3, klen, klen))
     kern[0, 0] = k
@@ -39,8 +34,8 @@ def hierarchical_perturbation(model,
                               interp_mode='nearest',
                               resize=None,
                               batch_size=32,
-                              perturbation_type='mean', threshold_mode='mid-range', return_info=False):
-    print('\nBelieve the HiPe!')
+                              perturbation_type='mean', threshold_mode='mid-range', return_info=False, diff_func=torch.relu, depth_bound=2, verbose=True):
+    if verbose: print('\nBelieve the HiPe!')
     with torch.no_grad():
 
         dev = input.device
@@ -51,9 +46,8 @@ def hierarchical_perturbation(model,
         total_masks = 0
         depth = 0
         num_cells = int(max(np.ceil(np.log2(dim)), 1)/2)
-        print('Num cells: {}'.format(num_cells))
-        max_depth = int(np.log2(dim / num_cells)) - 2
-        print('Max depth: {}'.format(max_depth))
+        max_depth = int(np.log2(dim / num_cells)) - depth_bound
+        if verbose: print('Max depth: {}'.format(max_depth))
         saliency = torch.zeros((1, 1, input_y_dim, input_x_dim), device=dev)
         max_batch = batch_size
 
@@ -65,7 +59,7 @@ def hierarchical_perturbation(model,
         if perturbation_type == 'blur':
             pre_b_image = blur(input.clone().cpu()).to(dev)
 
-        while (num_cells*2) <= (dim/4):
+        while depth <= max_depth:
 
             masks_list = []
             b_list = []
@@ -76,19 +70,23 @@ def hierarchical_perturbation(model,
             else:
                 threshold = torch.min(saliency) + ((torch.max(saliency) - torch.min(saliency)) / 2)
 
-            thresholds_d_list.append(threshold.item())
+            thresholds_d_list.append(diff_func(threshold).item())
 
             y_ixs = range(-1, num_cells)
             x_ixs = range(-1, num_cells)
             x_cell_dim = input_x_dim // num_cells
             y_cell_dim = input_y_dim // num_cells
 
-            print('Depth: {}, {} x {} Cell Dim'.format(depth, y_cell_dim, x_cell_dim))
-            print('Threshold: {}'.format(threshold))
-            print('Range {:.1f} to {:.1f}'.format(saliency.min(), saliency.max()))
+            
+            if verbose: 
+                print('Depth: {}, {} x {} Cell Dim'.format(depth, y_cell_dim, x_cell_dim))
+                print('Threshold: {}'.format(threshold))
+                print('Range {:.1f} to {:.1f}'.format(saliency.min(), saliency.max()))
+            possible_masks = 0
 
             for x in x_ixs:
                 for y in y_ixs:
+                    possible_masks += 1
                     x1, y1 = max(0, x), max(0, y)
                     x2, y2 = min(x + 2, num_cells), min(y + 2, num_cells)
 
@@ -97,7 +95,7 @@ def hierarchical_perturbation(model,
                     local_saliency = F.interpolate(mask, (input_y_dim, input_x_dim), mode=interp_mode) * saliency
 
                     if depth > 1:
-                        local_saliency = torch.max(local_saliency)
+                        local_saliency = torch.max(diff_func(local_saliency))
                     else:
                         local_saliency = 0
 
@@ -121,8 +119,7 @@ def hierarchical_perturbation(model,
                             b_list.append(b_image)
 
             num_masks = len(masks_list)
-            print('Selected {} masks at depth {}'.format(num_masks, depth))
-            print('Masks: {}'.format(num_masks))
+            if verbose: print('Selected {}/{} masks at depth {}'.format(num_masks, possible_masks, depth))
             if num_masks == 0:
                 depth -= 1
                 break
@@ -141,31 +138,31 @@ def hierarchical_perturbation(model,
                 masks = F.interpolate(masks, (input_y_dim, input_x_dim), mode=interp_mode)
 
                 if perturbation_type == 'fade':
-                    perturbed_outputs = torch.relu(output - model(input * masks)[:, target])
+                    perturbed_inputs = input * masks
+                    perturbed_outputs = diff_func(output - model(input * masks)[:, target])
                 else:
-                    perturbed_outputs = torch.relu(output - model(b_imgs)[:, target])
-
-                sal = perturbed_outputs * torch.abs(masks.transpose(0, 1) - 1)
+                    perturbed_outputs = diff_func(output - model(b_imgs)[:, target])
+    
+                if len(list(perturbed_outputs.shape)) == 1:
+                    sal = perturbed_outputs.reshape(-1,1,1,1) * torch.abs(masks - 1)
+                else:
+                    sal = perturbed_outputs * torch.abs(masks - 1)
+                    
                 saliency += torch.sum(sal, dim=(0, 1))
 
             if vis:
                 plt.figure(figsize=(8, 4))
-                plt.subplot(1, 2, 1)
-                plt.title('Depth: {}, {} x {} Mask\nThreshold: {:.1f}'.format(depth, num_y_cells, num_x_cells, threshold))
-                if perturbation_type == 'fade':
-                    imsc(torch.sum(input * masks, dim=(0, 1)).unsqueeze(0))
-                else:
-                    imsc(torch.sum(b_imgs, dim=(0, 1)).unsqueeze(0))
-                plt.subplot(1, 2, 2)
-                imsc(torch.sum(saliency, dim=(0, 1)).unsqueeze(0))
+                plt.title('Depth: {}, {} x {} Mask\nThreshold: {:.1f}'.format(depth, num_cells, num_cells, threshold))
+                plt.imshow(np.transpose((normalise(input) * normalise(saliency))[0], (1, 2, 0)))
                 plt.show()
-                plt.figure(figsize=(8, 4))
-                pd.Series(normalise(saliency).reshape(-1)).plot(label='Saliency ({})'.format(threshold_mode))
-                pd.Series(normalise(input).reshape(-1)).plot(label='Actual')
-                plt.legend()
-                plt.show()
+                #plt.figure(figsize=(8, 4))
+                #pd.Series(normalise(saliency).reshape(-1)).plot(label='Saliency ({})'.format(threshold_mode))
+                #pd.Series(normalise(input).reshape(-1)).plot(label='Actual')
+                #plt.legend()
+                #plt.show()
 
-        print('Used {} masks in total.'.format(total_masks))
+        if verbose: print('Used {} masks in total.'.format(total_masks))
+        saliency = normalise(saliency)
         if resize is not None:
             saliency = F.interpolate(saliency, (resize[1], resize[0]), mode=interp_mode)
         if return_info:
