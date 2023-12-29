@@ -16,7 +16,7 @@ from torchray.attribution.guided_backprop import guided_backprop
 from torchray.attribution.rise import rise
 from torchray.benchmark.datasets import get_dataset, coco_as_mask, voc_as_mask
 from torchray.benchmark.models import get_model, get_transform
-from torchray.utils import imsc, get_device, xmkdir
+from torchray.utils import imsc, xmkdir
 import torchray.attribution.extremal_perturbation as elp
 from HiPe import hierarchical_perturbation, hierarchical_perturbation_alternate
 from torchray.benchmark.datasets import COCO_CLASSES as classes
@@ -50,7 +50,16 @@ methods = [hipe_experiment,
            'extremal_perturbation'
            ]
 
-
+def get_device(dev=None):
+    if dev is not None:
+        return dev
+    if torch.cuda.is_available():
+        return "cuda"
+    elif torch.backends.mps.is_available():
+        return "mps"
+    else:
+        return "cpu"
+    
 class ProcessingError(Exception):
 
     def __init__(self, executor, experiment, model, image, label, class_id, image_size):

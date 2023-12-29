@@ -36,13 +36,13 @@ series_dir = os.path.join('data', series)
 seed = 0
 chunk = None
 vis = False
-lim = 10
+lim = 1
 
 datasets = ['coco']
 
 archs = ['resnet50']
 
-hipe_experiment = 'hipe_exps'
+hipe_experiment = 'hipe_batched'
 
 methods = [hipe_experiment,
            'rise',
@@ -56,6 +56,15 @@ methods = [hipe_experiment,
            'extremal_perturbation'
            ]
 
+def get_device(dev=None):
+    if dev is not None:
+        return dev
+    if torch.cuda.is_available():
+        return "cuda"
+    elif torch.backends.mps.is_available():
+        return "mps"
+    else:
+        return "cpu"
 
 class ProcessingError(Exception):
 
@@ -307,7 +316,7 @@ class ExperimentExecutor():
                     # For RISE, compute saliency map for all classes.
                     num_ops = 0
                     if rise_saliency is None:
-                        num_ops = 16000
+                        num_ops = 8000
                         rise_saliency = rise(self.model, x, resize=image_size, seed=self.seed)
                     saliency = rise_saliency[:, class_id, :, :].unsqueeze(1)
 
@@ -352,9 +361,9 @@ class ExperimentExecutor():
                 toc = time.process_time()
 
                 if 'hipe_' in self.experiment.name:
-                    point = _hipe_saliency_to_point(saliency)
+                    point = _hipe_saliency_to_point(saliency).cpu()
                 else:
-                    point = _saliency_to_point(saliency)
+                    point = _saliency_to_point(saliency).cpu()
 
                 info['saliency'] = saliency
                 info['num_ops'] = num_ops
